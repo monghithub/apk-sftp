@@ -1,0 +1,74 @@
+TITLE:
+APK-SFTP - SSH/SFTP File Transfer Client
+
+SHORT DESCRIPTION (80 chars max):
+Secure SFTP client for Android. Transfer files to/from remote servers via SSH.
+
+FULL DESCRIPTION:
+APK-SFTP is a powerful and secure SSH/SFTP client for Android that lets you transfer files between your mobile device and remote servers directly, without intermediaries.
+
+KEY FEATURES:
+✓ SSH Connection Management
+  - Connect to remote servers with SSH key authentication
+  - Support for RSA and ED25519 keys
+  - Real-time connection status
+  - Automatic reconnection on network drop
+
+✓ Secure Key Management
+  - Import SSH private keys securely
+  - Military-grade encryption (Android Keystore)
+  - No keys stored in plain text
+  - Support for passphrase-protected keys
+
+✓ File Management
+  - Browse local device files
+  - Browse remote SFTP directories
+  - Upload and download files
+  - View file permissions and metadata
+  - Delete and rename remote files
+
+✓ Connection Profiles
+  - Save frequently-used connections
+  - Quick access to saved profiles
+  - One-click connection
+
+✓ User-Friendly Interface
+  - Material Design 3 UI
+  - Dark mode support
+  - Intuitive navigation
+  - Real-time progress display
+
+SECURITY FEATURES:
+- All SSH keys encrypted with Android Keystore
+- No data sent to external servers (SSH only)
+- Automatic session timeout
+- Works completely offline (except for SSH connection)
+- No analytics or tracking
+- No account required
+
+REQUIREMENTS:
+- Android 8.0 or higher
+- Active internet connection for SSH
+- SSH private key
+
+PRIVACY:
+This app respects your privacy:
+- No personal data collection
+- No tracking or analytics
+- All data stored locally on your device
+- Complete control over your data
+
+PERFECT FOR:
+- Managing remote servers on the go
+- Developers who need SSH access
+- System administrators
+- Secure file transfers without cloud
+- Working in restricted networks
+
+Download APK-SFTP now and experience secure file transfer on Android!
+
+---
+
+Website: [link if available]
+Support: Report issues on GitHub
+Open Source: Yes (MIT License)
