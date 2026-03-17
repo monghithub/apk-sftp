@@ -92,6 +92,9 @@ dependencies {
     // JSch for SSH/SFTP
     implementation("com.jcraft:jsch:0.1.55")
 
+    // JSON Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
     // Logging
     implementation("android.util:android-util:1.0")
 
