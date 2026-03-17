@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ApkSftp" parent="android:Theme.Material.Light">
+        <item name="android:colorPrimary">#1f7fff</item>
+        <item name="android:colorPrimaryDark">#0d47a1</item>
+        <item name="android:colorAccent">#00bcd4</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+    </style>
+
+    <style name="Theme.ApkSftp.Night" parent="android:Theme.Material">
+        <item name="android:colorPrimary">#1f7fff</item>
+        <item name="android:colorPrimaryDark">#0d47a1</item>
+        <item name="android:colorAccent">#00bcd4</item>
+    </style>
+</resources>
