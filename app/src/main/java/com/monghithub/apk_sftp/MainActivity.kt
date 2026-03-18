@@ -1,14 +1,20 @@
 package com.monghithub.apk_sftp
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import com.monghithub.apk_sftp.presentation.screens.ConnectionScreen
 import com.monghithub.apk_sftp.presentation.screens.FileBrowserScreen
 import com.monghithub.apk_sftp.presentation.screens.HomeScreen
@@ -43,12 +49,38 @@ fun AppNavigation() {
     val profileViewModel = remember { ProfileViewModel(context) }
     val fileBrowserViewModel = remember { FileBrowserViewModel(context) }
 
+    // Request storage permissions on launch
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { /* permissions granted or denied, file browser handles gracefully */ }
+
+    LaunchedEffect(Unit) {
+        val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.READ_MEDIA_AUDIO
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+        }
+
+        val needed = perms.filter {
+            ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (needed.isNotEmpty()) {
+            permissionLauncher.launch(needed.toTypedArray())
+        }
+    }
+
     val connectionState by connectionViewModel.connectionState.collectAsState()
     val isConnected by connectionViewModel.isConnected.collectAsState()
     val connectionError by connectionViewModel.error.collectAsState()
     val profiles by profileViewModel.profiles.collectAsState()
 
-    // Navigate to file browser when connected
     LaunchedEffect(isConnected) {
         if (isConnected) {
             currentScreen = Screen.FILE_BROWSER
