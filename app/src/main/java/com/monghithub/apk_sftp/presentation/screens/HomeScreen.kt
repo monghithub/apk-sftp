@@ -16,22 +16,31 @@ fun HomeScreen(
     profiles: List<ConnectionProfile>,
     onNewConnection: () -> Unit,
     onProfileClick: (ConnectionProfile) -> Unit,
-    onDeleteProfile: (String) -> Unit
+    onDeleteProfile: (String) -> Unit,
+    onSettings: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            "APK-SFTP",
-            style = MaterialTheme.typography.headlineMedium
-        )
-        Text(
-            "SSH/SFTP Client",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("APK-SFTP", style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    "SSH/SFTP Client",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(onClick = onSettings) {
+                Text("\u2699\uFE0F", style = MaterialTheme.typography.headlineSmall)
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -44,10 +53,7 @@ fun HomeScreen(
 
         if (profiles.isNotEmpty()) {
             Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                "Saved Profiles",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text("Saved Profiles", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
 
             LazyColumn {
@@ -66,10 +72,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    profile.name,
-                                    style = MaterialTheme.typography.titleSmall
-                                )
+                                Text(profile.name, style = MaterialTheme.typography.titleSmall)
                                 Text(
                                     "${profile.username}@${profile.hostname}:${profile.port}",
                                     style = MaterialTheme.typography.bodySmall,

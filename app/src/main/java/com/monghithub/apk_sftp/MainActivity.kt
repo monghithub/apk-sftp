@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -15,12 +16,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.monghithub.apk_sftp.presentation.screens.ConnectionScreen
 import com.monghithub.apk_sftp.presentation.screens.FileBrowserScreen
 import com.monghithub.apk_sftp.presentation.screens.HomeScreen
+import com.monghithub.apk_sftp.presentation.screens.SettingsScreen
 import com.monghithub.apk_sftp.presentation.viewmodels.ConnectionViewModel
 import com.monghithub.apk_sftp.presentation.viewmodels.FileBrowserViewModel
 import com.monghithub.apk_sftp.presentation.viewmodels.ProfileViewModel
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +45,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class Screen { HOME, CONNECTION, FILE_BROWSER }
+enum class Screen { HOME, CONNECTION, FILE_BROWSER, SETTINGS }
 
 @Composable
 fun AppNavigation() {
@@ -49,31 +56,52 @@ fun AppNavigation() {
     val profileViewModel = remember { ProfileViewModel(context) }
     val fileBrowserViewModel = remember { FileBrowserViewModel(context) }
 
-    // Request storage permissions on launch
+    // Request permissions on launch
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* permissions granted or denied, file browser handles gracefully */ }
+    ) { /* handled */ }
 
     LaunchedEffect(Unit) {
-        val perms = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(
+        val perms = mutableListOf(Manifest.permission.CAMERA)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            perms.addAll(listOf(
                 Manifest.permission.READ_MEDIA_IMAGES,
                 Manifest.permission.READ_MEDIA_VIDEO,
                 Manifest.permission.READ_MEDIA_AUDIO
-            )
+            ))
         } else {
-            arrayOf(
+            perms.addAll(listOf(
                 Manifest.permission.READ_EXTERNAL_STORAGE,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
-            )
+            ))
         }
-
         val needed = perms.filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
         if (needed.isNotEmpty()) {
             permissionLauncher.launch(needed.toTypedArray())
         }
+    }
+
+    // Camera support
+    var photoFile by remember { mutableStateOf<File?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && photoFile != null) {
+            fileBrowserViewModel.uploadFile(photoFile!!.absolutePath)
+        }
+    }
+
+    fun takePhoto() {
+        val photosDir = File(context.cacheDir, "photos")
+        photosDir.mkdirs()
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val file = File(photosDir, "IMG_${timestamp}.jpg")
+        photoFile = file
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        cameraLauncher.launch(uri)
     }
 
     val connectionState by connectionViewModel.connectionState.collectAsState()
@@ -100,7 +128,8 @@ fun AppNavigation() {
                     )
                     currentScreen = Screen.CONNECTION
                 },
-                onDeleteProfile = { profileViewModel.deleteProfile(it) }
+                onDeleteProfile = { profileViewModel.deleteProfile(it) },
+                onSettings = { currentScreen = Screen.SETTINGS }
             )
         }
 
@@ -109,9 +138,7 @@ fun AppNavigation() {
                 onConnect = { hostname, port, username, password, keyPath ->
                     connectionViewModel.connect(hostname, port, username, password, keyPath)
                 },
-                onBack = {
-                    currentScreen = Screen.HOME
-                },
+                onBack = { currentScreen = Screen.HOME },
                 connectionStatus = connectionState,
                 error = connectionError,
                 isConnected = isConnected
@@ -139,11 +166,16 @@ fun AppNavigation() {
                 onNavigateLocalParent = { fileBrowserViewModel.navigateLocalParent() },
                 onUpload = { fileBrowserViewModel.uploadFile(it) },
                 onDownload = { fileBrowserViewModel.downloadFile(it) },
+                onTakePhoto = { takePhoto() },
                 onDisconnect = {
                     connectionViewModel.disconnect()
                     currentScreen = Screen.HOME
                 }
             )
+        }
+
+        Screen.SETTINGS -> {
+            SettingsScreen(onBack = { currentScreen = Screen.HOME })
         }
     }
 }

@@ -27,6 +27,7 @@ fun FileBrowserScreen(
     onNavigateLocalParent: () -> Unit,
     onUpload: (String) -> Unit,
     onDownload: (String) -> Unit,
+    onTakePhoto: () -> Unit,
     onDisconnect: () -> Unit
 ) {
     var showRemote by remember { mutableStateOf(true) }
@@ -56,7 +57,10 @@ fun FileBrowserScreen(
                     onClick = { showRemote = false },
                     label = { Text("Local") }
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                IconButton(onClick = onTakePhoto) {
+                    Text("\uD83D\uDCF7")
+                }
                 TextButton(onClick = onDisconnect) {
                     Text("Disconnect")
                 }
