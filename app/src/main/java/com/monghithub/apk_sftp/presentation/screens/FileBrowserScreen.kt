@@ -1,91 +1,193 @@
 package com.monghithub.apk_sftp.presentation.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.monghithub.apk_sftp.domain.models.FileInfo
 
 @Composable
 fun FileBrowserScreen(
-    files: List<FileInfo>,
-    currentPath: String,
-    onNavigate: (String) -> Unit,
-    onBack: () -> Unit,
+    remoteFiles: List<FileInfo>,
+    localFiles: List<FileInfo>,
+    currentRemotePath: String,
+    currentLocalPath: String,
+    error: String?,
+    transferStatus: String?,
+    onNavigateRemote: (String) -> Unit,
+    onNavigateRemoteParent: () -> Unit,
+    onNavigateLocal: (String) -> Unit,
+    onNavigateLocalParent: () -> Unit,
     onUpload: (String) -> Unit,
-    onDownload: (String) -> Unit
+    onDownload: (String) -> Unit,
+    onDisconnect: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
+    var showRemote by remember { mutableStateOf(true) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp)
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Path: $currentPath", modifier = Modifier.weight(1f))
-            Button(onClick = onBack) {
-                Text("Back")
+            Text(
+                if (showRemote) "Remote" else "Local",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Row {
+                FilterChip(
+                    selected = showRemote,
+                    onClick = { showRemote = true },
+                    label = { Text("Remote") },
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+                FilterChip(
+                    selected = !showRemote,
+                    onClick = { showRemote = false },
+                    label = { Text("Local") }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onDisconnect) {
+                    Text("Disconnect")
+                }
             }
         }
 
-        LazyColumn {
-            items(files) { file ->
-                FileItemRow(
-                    file = file,
-                    onClick = {
-                        if (file.isDirectory) {
-                            onNavigate(file.path)
+        // Transfer status
+        if (transferStatus != null) {
+            Text(
+                transferStatus,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        // Error
+        if (error != null) {
+            Text(
+                error,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        // Path bar
+        val currentPath = if (showRemote) currentRemotePath else currentLocalPath
+        val onParent = if (showRemote) onNavigateRemoteParent else onNavigateLocalParent
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onParent) {
+                Text("..")
+            }
+            Text(
+                currentPath,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Divider()
+
+        // File list
+        val files = if (showRemote) remoteFiles else localFiles
+
+        if (files.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Empty directory", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(files, key = { it.path }) { file ->
+                    FileRow(
+                        file = file,
+                        isRemote = showRemote,
+                        onClick = {
+                            if (file.isDirectory) {
+                                if (showRemote) onNavigateRemote(file.path)
+                                else onNavigateLocal(file.path)
+                            }
+                        },
+                        onTransfer = {
+                            if (showRemote) onDownload(file.path)
+                            else onUpload(file.path)
                         }
-                    },
-                    onUpload = { onUpload(file.path) },
-                    onDownload = { onDownload(file.path) }
-                )
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun FileItemRow(
+fun FileRow(
     file: FileInfo,
+    isRemote: Boolean,
     onClick: () -> Unit,
-    onUpload: () -> Unit,
-    onDownload: () -> Unit
+    onTransfer: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(8.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = file.name,
-            modifier = Modifier.weight(1f)
+            text = if (file.isDirectory) "\uD83D\uDCC1" else "\uD83D\uDCC4",
+            modifier = Modifier.padding(end = 8.dp)
         )
-        Text("${file.size} bytes")
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = file.name,
+                fontWeight = if (file.isDirectory) FontWeight.Medium else FontWeight.Normal,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!file.isDirectory) {
+                Text(
+                    text = formatSize(file.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         if (!file.isDirectory) {
-            Button(onClick = onUpload, modifier = Modifier.padding(4.dp)) {
-                Text("↑")
-            }
-            Button(onClick = onDownload, modifier = Modifier.padding(4.dp)) {
-                Text("↓")
+            TextButton(onClick = onTransfer) {
+                Text(if (isRemote) "Download" else "Upload")
             }
         }
     }
+}
+
+private fun formatSize(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024) return String.format("%.1f KB", kb)
+    val mb = kb / 1024.0
+    if (mb < 1024) return String.format("%.1f MB", mb)
+    val gb = mb / 1024.0
+    return String.format("%.1f GB", gb)
 }

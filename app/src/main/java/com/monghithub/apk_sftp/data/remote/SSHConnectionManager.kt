@@ -7,48 +7,51 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Properties
 
-class SSHConnectionManager {
+object SSHConnectionManager {
     private val jsch = JSch()
     private var session: Session? = null
-    private var isConnected = false
 
     suspend fun connect(connection: SSHConnection, timeoutMs: Int = 30000): Result<Unit> =
-        withContext(Dispatchers.Default) {
+        withContext(Dispatchers.IO) {
             try {
-                // Create session
+                disconnect()
+
+                if (connection.keyPath.isNotBlank()) {
+                    jsch.addIdentity(connection.keyPath)
+                }
+
                 session = jsch.getSession(
                     connection.username,
                     connection.hostname,
                     connection.port
                 ).apply {
-                    // Add private key
-                    jsch.addIdentity(connection.keyPath)
-
-                    // Configure session properties
                     val config = Properties()
                     config["StrictHostKeyChecking"] = "no"
-                    config["PreferredAuthentications"] = "publickey"
-                    setConfig(config)
 
-                    // Set timeout
+                    if (connection.keyPath.isNotBlank()) {
+                        config["PreferredAuthentications"] = "publickey"
+                    } else if (!connection.password.isNullOrBlank()) {
+                        config["PreferredAuthentications"] = "password"
+                        setPassword(connection.password)
+                    }
+
+                    setConfig(config)
                     setServerAliveInterval(30000)
                     serverAliveCountMax = 3
                 }
 
-                // Connect
                 session?.connect(timeoutMs)
-                isConnected = true
                 Result.success(Unit)
             } catch (e: Exception) {
-                isConnected = false
+                session = null
                 Result.failure(e)
             }
         }
 
-    suspend fun disconnect(): Result<Unit> = withContext(Dispatchers.Default) {
+    suspend fun disconnect(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             session?.disconnect()
-            isConnected = false
+            session = null
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -57,9 +60,9 @@ class SSHConnectionManager {
 
     fun getSession(): Session? = session
 
-    fun isConnected(): Boolean = isConnected && session?.isConnected == true
+    fun isConnected(): Boolean = session?.isConnected == true
 
-    fun getConnectionInfo(): String? = session?.host?.let { host ->
-        "${session?.userName}@$host:${session?.port}"
+    fun getConnectionInfo(): String? = session?.let { s ->
+        "${s.userName}@${s.host}:${s.port}"
     }
 }

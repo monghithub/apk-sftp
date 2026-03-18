@@ -4,6 +4,6 @@ data class SSHConnection(
     val hostname: String,
     val port: Int = 22,
     val username: String,
-    val keyPath: String,
-    val passphrase: String? = null
+    val keyPath: String = "",
+    val password: String? = null
 )

@@ -10,10 +10,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ConnectionViewModel : ViewModel() {
-    private val sshManager = SSHConnectionManager()
 
     private val _connectionState = MutableStateFlow("Disconnected")
     val connectionState: StateFlow<String> = _connectionState.asStateFlow()
+
+    private val _isConnected = MutableStateFlow(false)
+    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -22,48 +24,46 @@ class ConnectionViewModel : ViewModel() {
         hostname: String,
         port: Int,
         username: String,
-        keyPath: String
+        password: String? = null,
+        keyPath: String = ""
     ) {
         viewModelScope.launch {
-            _connectionState.value = "Connecting"
+            _connectionState.value = "Connecting..."
             _error.value = null
 
             val connection = SSHConnection(
                 hostname = hostname,
                 port = port,
                 username = username,
-                keyPath = keyPath
+                keyPath = keyPath,
+                password = password
             )
 
-            val result = sshManager.connect(connection)
+            val result = SSHConnectionManager.connect(connection)
             result.onSuccess {
-                _connectionState.value = "Connected"
-                _connectionState.value = "Connected to ${sshManager.getConnectionInfo()}"
+                _isConnected.value = true
+                _connectionState.value = "Connected to ${SSHConnectionManager.getConnectionInfo()}"
             }.onFailure { exception ->
+                _isConnected.value = false
                 _connectionState.value = "Disconnected"
-                _error.value = exception.message ?: "Unknown error"
+                _error.value = exception.message ?: "Connection failed"
             }
         }
     }
 
     fun disconnect() {
         viewModelScope.launch {
-            val result = sshManager.disconnect()
-            result.onSuccess {
-                _connectionState.value = "Disconnected"
-                _error.value = null
-            }.onFailure { exception ->
-                _error.value = exception.message ?: "Disconnect failed"
-            }
+            SSHConnectionManager.disconnect()
+            _isConnected.value = false
+            _connectionState.value = "Disconnected"
+            _error.value = null
         }
     }
-
-    fun isConnected(): Boolean = sshManager.isConnected()
 
     override fun onCleared() {
         super.onCleared()
         viewModelScope.launch {
-            sshManager.disconnect()
+            SSHConnectionManager.disconnect()
         }
     }
 }

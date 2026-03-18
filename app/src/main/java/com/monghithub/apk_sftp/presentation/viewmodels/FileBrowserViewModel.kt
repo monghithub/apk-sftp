@@ -14,38 +14,55 @@ import kotlinx.coroutines.launch
 
 class FileBrowserViewModel(context: Context) : ViewModel() {
     private val localFileManager = LocalFileManager(context)
-    private val sshConnectionManager = SSHConnectionManager()
-    private val sftpFileManager = SFTPFileManager(sshConnectionManager)
+    private val sftpFileManager = SFTPFileManager(SSHConnectionManager)
 
-    // Local files
-    private val _localFiles = MutableStateFlow<List<FileInfo>>(emptyList())
-    val localFiles: StateFlow<List<FileInfo>> = _localFiles.asStateFlow()
-
-    private val _currentLocalPath = MutableStateFlow<String>("")
-    val currentLocalPath: StateFlow<String> = _currentLocalPath.asStateFlow()
-
-    // Remote files
     private val _remoteFiles = MutableStateFlow<List<FileInfo>>(emptyList())
     val remoteFiles: StateFlow<List<FileInfo>> = _remoteFiles.asStateFlow()
 
-    private val _currentRemotePath = MutableStateFlow<String>("")
+    private val _currentRemotePath = MutableStateFlow("/home")
     val currentRemotePath: StateFlow<String> = _currentRemotePath.asStateFlow()
 
-    // Selection
-    private val _selectedLocalFiles = MutableStateFlow<Set<String>>(emptySet())
-    val selectedLocalFiles: StateFlow<Set<String>> = _selectedLocalFiles.asStateFlow()
+    private val _localFiles = MutableStateFlow<List<FileInfo>>(emptyList())
+    val localFiles: StateFlow<List<FileInfo>> = _localFiles.asStateFlow()
 
-    private val _selectedRemoteFiles = MutableStateFlow<Set<String>>(emptySet())
-    val selectedRemoteFiles: StateFlow<Set<String>> = _selectedRemoteFiles.asStateFlow()
+    private val _currentLocalPath = MutableStateFlow("")
+    val currentLocalPath: StateFlow<String> = _currentLocalPath.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _transferStatus = MutableStateFlow<String?>(null)
+    val transferStatus: StateFlow<String?> = _transferStatus.asStateFlow()
 
     init {
         loadLocalFiles()
+        loadRemoteFiles()
     }
 
-    fun loadLocalFiles() {
+    fun loadRemoteFiles(path: String = _currentRemotePath.value) {
         viewModelScope.launch {
-            if (_currentLocalPath.value.isEmpty()) {
+            _error.value = null
+            _currentRemotePath.value = path
+            val result = sftpFileManager.getRemoteFiles(path)
+            result.onSuccess { files ->
+                _remoteFiles.value = files
+            }.onFailure { e ->
+                _error.value = "Remote: ${e.message}"
+            }
+        }
+    }
+
+    fun navigateRemoteParent() {
+        val parent = _currentRemotePath.value.substringBeforeLast("/")
+        loadRemoteFiles(if (parent.isEmpty()) "/" else parent)
+    }
+
+    fun loadLocalFiles(path: String = _currentLocalPath.value) {
+        viewModelScope.launch {
+            if (path.isEmpty()) {
                 _currentLocalPath.value = localFileManager.getDefaultPath()
+            } else {
+                _currentLocalPath.value = path
             }
             val result = localFileManager.getFiles(_currentLocalPath.value)
             result.onSuccess { files ->
@@ -54,58 +71,44 @@ class FileBrowserViewModel(context: Context) : ViewModel() {
         }
     }
 
-    fun navigateLocalDirectory(path: String) {
-        viewModelScope.launch {
-            _currentLocalPath.value = path
-            loadLocalFiles()
-        }
-    }
-
     fun navigateLocalParent() {
         viewModelScope.launch {
             val parent = localFileManager.getParentPath(_currentLocalPath.value)
             if (parent != null) {
-                _currentLocalPath.value = parent
-                loadLocalFiles()
+                loadLocalFiles(parent)
             }
         }
     }
 
-    fun loadRemoteFiles(path: String = "/home") {
+    fun uploadFile(localPath: String) {
         viewModelScope.launch {
-            _currentRemotePath.value = path
-            val result = sftpFileManager.getRemoteFiles(path)
-            result.onSuccess { files ->
-                _remoteFiles.value = files
+            _transferStatus.value = "Uploading..."
+            val remoteDest = "${_currentRemotePath.value}/${localPath.substringAfterLast("/")}"
+            val result = sftpFileManager.uploadFile(localPath, remoteDest)
+            result.onSuccess {
+                _transferStatus.value = "Upload complete"
+                loadRemoteFiles()
+            }.onFailure { e ->
+                _transferStatus.value = "Upload failed: ${e.message}"
             }
         }
     }
 
-    fun toggleLocalFileSelection(path: String) {
-        val current = _selectedLocalFiles.value.toMutableSet()
-        if (current.contains(path)) {
-            current.remove(path)
-        } else {
-            current.add(path)
+    fun downloadFile(remotePath: String) {
+        viewModelScope.launch {
+            _transferStatus.value = "Downloading..."
+            val localDest = "${_currentLocalPath.value}/${remotePath.substringAfterLast("/")}"
+            val result = sftpFileManager.downloadFile(remotePath, localDest)
+            result.onSuccess {
+                _transferStatus.value = "Download complete"
+                loadLocalFiles()
+            }.onFailure { e ->
+                _transferStatus.value = "Download failed: ${e.message}"
+            }
         }
-        _selectedLocalFiles.value = current
     }
 
-    fun toggleRemoteFileSelection(path: String) {
-        val current = _selectedRemoteFiles.value.toMutableSet()
-        if (current.contains(path)) {
-            current.remove(path)
-        } else {
-            current.add(path)
-        }
-        _selectedRemoteFiles.value = current
-    }
-
-    fun clearLocalSelection() {
-        _selectedLocalFiles.value = emptySet()
-    }
-
-    fun clearRemoteSelection() {
-        _selectedRemoteFiles.value = emptySet()
+    fun clearTransferStatus() {
+        _transferStatus.value = null
     }
 }
