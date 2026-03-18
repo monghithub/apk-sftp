@@ -1,6 +1,9 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -24,7 +27,7 @@ android {
         create("release") {
             val keystoreFile = rootProject.file("keystore.properties")
             if (keystoreFile.exists()) {
-                val keystore = java.util.Properties()
+                val keystore = Properties()
                 keystore.load(keystoreFile.inputStream())
 
                 storeFile = rootProject.file(keystore["storeFile"] as String)
@@ -110,9 +113,6 @@ dependencies {
 
     // JSON Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-
-    // Logging
-    implementation("android.util:android-util:1.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

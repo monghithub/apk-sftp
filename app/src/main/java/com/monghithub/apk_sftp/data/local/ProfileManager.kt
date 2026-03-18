@@ -8,6 +8,7 @@ import com.monghithub.apk_sftp.domain.models.ConnectionProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import java.util.UUID
 
@@ -98,7 +99,19 @@ class ProfileManager(context: Context) {
     }
 
     suspend fun exportProfiles(): String = withContext(Dispatchers.IO) {
-        Json.encodeToString(getProfiles())
+        val profiles = getProfiles().map { profile ->
+            ProfileData(
+                id = profile.id,
+                name = profile.name,
+                hostname = profile.hostname,
+                port = profile.port,
+                username = profile.username,
+                keyId = profile.keyId,
+                isDefault = profile.isDefault,
+                createdDate = profile.createdDate
+            )
+        }
+        Json.encodeToString(ListSerializer(ProfileData.serializer()), profiles)
     }
 
     suspend fun importProfiles(json: String): Result<Unit> = withContext(Dispatchers.IO) {

@@ -23,15 +23,17 @@ class SFTPFileManager(private val sshConnectionManager: SSHConnectionManager) {
                     Exception("Not connected")
                 )
 
-                val files = channel.ls(remotePath)
+                @Suppress("UNCHECKED_CAST")
+                val entries = channel.ls(remotePath) as? java.util.Vector<ChannelSftp.LsEntry>
+                val files = entries
                     ?.filterNot { it.filename == "." || it.filename == ".." }
                     ?.map { entry ->
                         FileInfo(
                             name = entry.filename,
                             path = "$remotePath/${entry.filename}",
-                            isDirectory = entry.isDir,
+                            isDirectory = entry.attrs.isDir,
                             size = entry.attrs.size,
-                            modifiedDate = entry.attrs.mtime.toLong() * 1000,
+                            modifiedDate = entry.attrs.mTime.toLong() * 1000,
                             permissions = String.format("%o", entry.attrs.permissions)
                         )
                     }
